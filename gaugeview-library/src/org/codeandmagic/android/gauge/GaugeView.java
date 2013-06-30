@@ -34,6 +34,11 @@ import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.View;
 
+import com.nineoldandroids.animation.ArgbEvaluator;
+import com.nineoldandroids.animation.ObjectAnimator;
+import com.nineoldandroids.animation.ValueAnimator;
+import com.nineoldandroids.animation.ValueAnimator.AnimatorUpdateListener;
+
 public class GaugeView extends View {
 
 	public static final int SIZE = 300;
@@ -395,8 +400,10 @@ public class GaugeView extends View {
 
 	public Paint getDefaultFacePaint() {
 		final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-		paint.setShader(new RadialGradient(0.5f, 0.5f, mFaceRect.width() / 2, new int[] { Color.rgb(50, 132, 206), Color.rgb(36, 89, 162),
-				Color.rgb(27, 59, 131) }, new float[] { 0.5f, 0.96f, 0.99f }, TileMode.MIRROR));
+		paint.setShader(new RadialGradient(0.5f, 0.5f, mFaceRect.width() / 2,
+				new int[] { Color.rgb(50, 132, 206), Color.rgb(36, 89, 162),
+						Color.rgb(27, 59, 131) }, new float[] { 0.5f, 0.96f,
+						0.99f }, TileMode.MIRROR));
 		return paint;
 	}
 
@@ -603,9 +610,10 @@ public class GaugeView extends View {
 
 		final float scale = Math.min(getWidth(), getHeight());
 		canvas.scale(scale, scale);
-		canvas.translate((scale == getHeight()) ? ((getWidth()-scale) /2)/scale : 0 
-				,(scale == getWidth()) ? ((getHeight()-scale) /2 )/scale: 0);
-		
+		canvas.translate((scale == getHeight()) ? ((getWidth() - scale) / 2)
+				/ scale : 0,
+				(scale == getWidth()) ? ((getHeight() - scale) / 2) / scale : 0);
+		drawFace(canvas);
 		if (mShowNeedle) {
 			drawNeedle(canvas);
 		}
@@ -804,7 +812,59 @@ public class GaugeView extends View {
 			mTargetValue = value;
 		}
 		mNeedleInitialized = true;
-		invalidate();
+		View deadView = new View(getContext());
+		ArgbEvaluator evaluator = new ArgbEvaluator();
+
+		int orange = Color.rgb(255, 245, 238);
+		int interpolateTargetEnd = Color.GREEN;
+		int interpolateTargetStart = Color.RED;
+		/*if (value <= 50) {
+			interpolateTargetEnd = orange;
+		} else {
+			interpolateTargetStart = orange;
+		}*/
+
+		int endColor = (Integer) evaluator.evaluate(value / 100,
+				interpolateTargetStart, interpolateTargetEnd);
+		ValueAnimator colorAnim = ObjectAnimator.ofInt(deadView,
+				"backgroundColor",/* Blue */
+				Color.RED, /* Red */endColor);
+
+		colorAnim.setDuration(1000);
+		colorAnim.setEvaluator(new ArgbEvaluator());
+		colorAnim.addUpdateListener(new AnimatorUpdateListener() {
+
+			@Override
+			public void onAnimationUpdate(ValueAnimator animation) {
+				// TODO Auto-generated method stub
+				Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+				paint.setShader(new RadialGradient(0.5f, 0.5f, mFaceRect
+						.width() / 2, new int[] {
+						(Integer) animation.getAnimatedValue(),
+						(Integer) animation.getAnimatedValue() }, new float[] {
+						0.5f, 0.99f }, TileMode.MIRROR));
+				mFacePaint = paint;
+				invalidate();
+
+			}
+		});
+		colorAnim.start();
+	}
+
+	private float interpolate(float a, float b, float proportion) {
+		return (a + ((b - a) * proportion));
+	}
+
+	/** Returns an interpoloated color, between <code>a</code> and <code>b</code> */
+	private int interpolateColor(int a, int b, float proportion) {
+		float[] hsva = new float[3];
+		float[] hsvb = new float[3];
+		Color.colorToHSV(a, hsva);
+		Color.colorToHSV(b, hsvb);
+		for (int i = 0; i < 3; i++) {
+			hsvb[i] = interpolate(hsva[i], hsvb[i], proportion);
+		}
+		return Color.HSVToColor(hsvb);
 	}
 
 }
