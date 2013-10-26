@@ -10,7 +10,6 @@ package org.codeandmagic.android.gauge.samples;
 import java.util.Random;
 
 import org.codeandmagic.android.gauge.GaugeView;
-import org.codeandmagic.android.gauge.R;
 
 import android.app.Activity;
 import android.os.Bundle;
